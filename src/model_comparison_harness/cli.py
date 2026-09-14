@@ -5,6 +5,7 @@ instead of guessing. See seeds/one-harness-two-proving-grounds-when-local-models
 actually-good-enough.md in Contexta for the full thesis; this is proving ground #1.
 """
 
+import os
 from datetime import date
 from pathlib import Path
 from typing import Annotated
@@ -20,7 +21,13 @@ from model_comparison_harness.report import render_markdown, summarize
 
 _TOOL_NAME = "model-comparison-harness"
 _TOOL = register_tool(_TOOL_NAME)
-_RESULTS_DIR = Path(__file__).resolve().parents[2] / "results"
+# NOT derived from __file__: that resolves inside the installed uv tool's
+# site-packages once `uv tool install` copies the package there, which silently
+# buried real results where git (and the repo's own results/ dir) would never
+# see them. Fixed 2026-09-13 after exactly that happened to a real run.
+_RESULTS_DIR = Path(
+    os.environ.get("MODEL_COMPARISON_HARNESS_RESULTS_DIR", "~/projects/local-first/model-comparison-harness/results")
+).expanduser()
 
 app = typer.Typer(add_completion=False)
 
