@@ -1,6 +1,8 @@
 """Aggregate ItemResults into the comparison report the whole harness exists to produce."""
 
+import csv
 from dataclasses import dataclass
+from pathlib import Path
 
 from model_comparison_harness.backtest import ItemResult
 
@@ -78,3 +80,35 @@ def render_markdown(summary: Summary) -> str:
         "False dismiss is the expensive error: it's not a false alarm, it's an item that never gets a second chance.",
     ]
     return "\n".join(lines) + "\n"
+
+
+def write_items_csv(results: list[ItemResult], path: Path, threshold: float) -> None:
+    """Per-item detail alongside the aggregate report.
+
+    Written 2026-09-14 after a real gap: a completed gemma4 run only had its
+    aggregate summary saved, and "what did gemma4 and Claude actually disagree
+    on" couldn't be answered without a full 200-item, ~2-hour re-run. The
+    aggregate numbers alone are not the whole record -- this is.
+    """
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(
+            ["item_id", "status", "claude_score", "candidate_score", "agrees", "abs_diff", "latency_s", "error", "title", "url"]
+        )
+        for r in results:
+            agrees = r.agrees(threshold)
+            abs_diff = abs(r.candidate_score - r.original_score) if r.candidate_score is not None else ""
+            writer.writerow(
+                [
+                    r.item_id,
+                    r.status,
+                    r.original_score,
+                    r.candidate_score if r.candidate_score is not None else "",
+                    "" if agrees is None else agrees,
+                    abs_diff,
+                    f"{r.latency_s:.2f}",
+                    r.error or "",
+                    r.title,
+                    r.url,
+                ]
+            )

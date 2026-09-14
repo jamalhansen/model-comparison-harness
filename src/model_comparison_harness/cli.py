@@ -19,7 +19,7 @@ from local_first_common.providers import PROVIDERS
 from local_first_common.tracking import register_tool, timed_run
 
 from model_comparison_harness.backtest import ItemResult, run_backtest, sample_items
-from model_comparison_harness.report import render_markdown, summarize
+from model_comparison_harness.report import render_markdown, summarize, write_items_csv
 
 _TOOL_NAME = "model-comparison-harness"
 _TOOL = register_tool(_TOOL_NAME)
@@ -122,6 +122,10 @@ def backtest(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(report, encoding="utf-8")
     typer.echo(f"Written: {output_path}")
+
+    items_path = output_path.with_suffix(".csv")
+    write_items_csv(results, items_path, cutoff)
+    typer.echo(f"Written: {items_path}")
 
 
 if __name__ == "__main__":
