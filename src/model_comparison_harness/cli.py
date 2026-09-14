@@ -6,6 +6,8 @@ actually-good-enough.md in Contexta for the full thesis; this is proving ground 
 """
 
 import os
+import sys
+import time
 from datetime import date
 from pathlib import Path
 from typing import Annotated
@@ -16,7 +18,7 @@ from local_first_common.cli import resolve_provider
 from local_first_common.providers import PROVIDERS
 from local_first_common.tracking import register_tool, timed_run
 
-from model_comparison_harness.backtest import run_backtest, sample_items
+from model_comparison_harness.backtest import ItemResult, run_backtest, sample_items
 from model_comparison_harness.report import render_markdown, summarize
 
 _TOOL_NAME = "model-comparison-harness"
@@ -38,6 +40,25 @@ def _default_output_path(provider: str, model: str | None, limit: int) -> Path:
     terminal scrolls."""
     model_slug = (model or "default").replace("/", "_").replace(":", "-")
     return _RESULTS_DIR / f"{date.today().isoformat()}-{provider}-{model_slug}-n{limit}.md"
+
+
+def _print_progress(i: int, total: int, result: ItemResult, cutoff: float, verbose: bool, run_start: float) -> None:
+    """Fires after every item -- a 200-item run against a slow/verbose model can take
+    over an hour with the previous silent version (confirmed live: gemma4 vs llama3.2:3b,
+    same 200 items, one finished in 5 minutes, the other took 68+ with zero visibility
+    into how far along it was). Explicitly flushed: stdout is fully buffered, not
+    line-buffered, once redirected to a file or pipe -- the common case for a run this
+    long -- so an unflushed print wouldn't actually show up until the process exits.
+    """
+    elapsed = time.monotonic() - run_start
+    eta = (elapsed / i) * (total - i)
+    progress = f"[{i}/{total}] {elapsed:.0f}s elapsed, ~{eta:.0f}s remaining"
+    if verbose:
+        mark = "?" if result.error else ("OK" if result.agrees(cutoff) else "DISAGREE")
+        line = f"{progress}  [{mark}] {result.status:>9} claude={result.original_score:.2f} candidate={result.candidate_score} :: {result.title[:60]}"
+    else:
+        line = progress
+    print(line, file=sys.stdout, flush=True)
 
 
 @app.command()
@@ -80,15 +101,16 @@ def backtest(
         raise typer.Exit(1)
 
     typer.echo(f"Sampled {len(items)} items from {db_path}. Scoring with {provider}/{getattr(llm_provider, 'model', model)}...")
+    sys.stdout.flush()
+
+    run_start = time.monotonic()
+
+    def _on_result(i: int, total: int, result: ItemResult) -> None:
+        _print_progress(i, total, result, cutoff, verbose, run_start)
 
     with timed_run(_TOOL_NAME, getattr(llm_provider, "model", None)) as run:
-        results = run_backtest(items, llm_provider, INTEREST_PROFILE, INTEREST_EXCLUSIONS)
+        results = run_backtest(items, llm_provider, INTEREST_PROFILE, INTEREST_EXCLUSIONS, on_result=_on_result)
         run.item_count = len(results)
-
-    if verbose:
-        for r in results:
-            mark = "?" if r.error else ("OK" if r.agrees(cutoff) else "DISAGREE")
-            typer.echo(f"  [{mark}] {r.status:>9} claude={r.original_score:.2f} candidate={r.candidate_score} :: {r.title[:70]}")
 
     model_label = f"{provider}/{getattr(llm_provider, 'model', model) or 'default'}"
     summary = summarize(results, model_label, cutoff)

@@ -10,6 +10,7 @@ model and measures where it agrees and disagrees with Claude, instead of guessin
 import random
 import sqlite3
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from discovery.scorer import ContentDiscoveryScorer, build_user_message
@@ -85,8 +86,15 @@ def run_backtest(
     provider: BaseProvider,
     interest_profile: str,
     exclusions: str = "",
+    on_result: Callable[[int, int, "ItemResult"], None] | None = None,
 ) -> list[ItemResult]:
-    """Score every sampled item with `provider` and pair it against its stored score."""
+    """Score every sampled item with `provider` and pair it against its stored score.
+
+    `on_result(i, total, result)` fires after each item completes, 1-indexed --
+    a 200-item run against a verbose model can take over an hour with zero
+    visibility otherwise (confirmed live 2026-09-13: gemma4 took 68+ minutes on
+    a run llama3.2:3b finished in 5, with no way to tell how far along it was).
+    """
     # ContentDiscoveryScorer.score() (via BaseScorer) already catches provider
     # exceptions internally and returns None rather than raising -- it logs a
     # warning but doesn't expose which failure mode it was. That means a dead
@@ -94,21 +102,23 @@ def run_backtest(
     # the error message below says so honestly rather than guessing.
     scorer = ContentDiscoveryScorer()
     results: list[ItemResult] = []
-    for item in items:
+    total = len(items)
+    for i, item in enumerate(items, start=1):
         user_message = build_user_message(item["title"], item["description"], interest_profile, exclusions)
         start = time.monotonic()
         scored = scorer.score(provider, user_message)
         latency = time.monotonic() - start
-        results.append(
-            ItemResult(
-                item_id=item["id"],
-                url=item["url"],
-                title=item["title"],
-                status=item["status"],
-                original_score=item["score"],
-                candidate_score=scored.score if scored else None,
-                latency_s=latency,
-                error=None if scored else "no result (provider error or unparseable response, see log)",
-            )
+        result = ItemResult(
+            item_id=item["id"],
+            url=item["url"],
+            title=item["title"],
+            status=item["status"],
+            original_score=item["score"],
+            candidate_score=scored.score if scored else None,
+            latency_s=latency,
+            error=None if scored else "no result (provider error or unparseable response, see log)",
         )
+        results.append(result)
+        if on_result:
+            on_result(i, total, result)
     return results

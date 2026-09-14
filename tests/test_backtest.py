@@ -81,6 +81,22 @@ class TestRunBacktest:
             assert r.candidate_score == 0.7
             assert r.error is None
 
+    def test_on_result_callback_fires_once_per_item_with_1_indexed_progress(self, db_path):
+        items = sample_items(db_path, limit=2, seed=1)
+        provider = _FakeProvider(['{"score": 0.5, "tags": [], "summary": "x", "language": "en"}'] * len(items))
+        calls = []
+        run_backtest(items, provider, "testing", on_result=lambda i, total, r: calls.append((i, total, r)))
+        assert [c[0] for c in calls] == [1, 2]
+        assert all(c[1] == 2 for c in calls)
+        assert all(isinstance(c[2], ItemResult) for c in calls)
+
+    def test_no_callback_required(self, db_path):
+        # on_result is optional -- existing callers that don't pass it must still work.
+        items = sample_items(db_path, limit=2, seed=1)
+        provider = _FakeProvider(['{"score": 0.5, "tags": [], "summary": "x", "language": "en"}'] * len(items))
+        results = run_backtest(items, provider, "testing")
+        assert len(results) == len(items)
+
     def test_provider_exception_surfaces_as_no_result(self, db_path):
         # BaseScorer.score() catches provider exceptions internally and returns
         # None rather than raising -- this can't distinguish "provider down"
