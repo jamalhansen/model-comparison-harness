@@ -95,7 +95,7 @@ def backtest(
     cutoff = threshold if threshold is not None else DEFAULT_THRESHOLD
 
     try:
-        llm_provider = resolve_provider(PROVIDERS, provider, model, fallback=False)
+        llm_provider = resolve_provider(PROVIDERS, provider, model, fallback=False, tool_name=_TOOL_NAME)
     except Exception as e:
         typer.echo(f"Error initializing provider '{provider}': {e}", err=True)
         raise typer.Exit(1) from e
