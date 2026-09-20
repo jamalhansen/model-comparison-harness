@@ -65,7 +65,7 @@ class _FakeProvider:
         self._responses = list(responses)
         self.calls = 0
 
-    def complete(self, system_prompt, user_message):  # noqa: ARG002
+    def complete(self, system_prompt, user_message):
         self.calls += 1
         return self._responses.pop(0)
 
@@ -104,7 +104,7 @@ class TestRunBacktest:
         items = sample_items(db_path, limit=2, seed=1)
 
         class _Boom:
-            def complete(self, *a, **k):  # noqa: ARG002
+            def complete(self, *a, **k):
                 raise RuntimeError("provider down")
 
         results = run_backtest(items, _Boom(), "testing")

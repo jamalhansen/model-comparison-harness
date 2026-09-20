@@ -13,7 +13,12 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from discovery.config import DEFAULT_THRESHOLD, INTEREST_EXCLUSIONS, INTEREST_PROFILE, STORE_PATH
+from discovery.config import (
+    DEFAULT_THRESHOLD,
+    INTEREST_EXCLUSIONS,
+    INTEREST_PROFILE,
+    STORE_PATH,
+)
 from local_first_common.cli import resolve_provider
 from local_first_common.providers import PROVIDERS
 from local_first_common.tracking import register_tool, timed_run
@@ -39,7 +44,7 @@ def _default_output_path(provider: str, model: str | None, limit: int) -> Path:
     in the repo, not just printed to stdout, so past runs aren't lost the moment the
     terminal scrolls."""
     model_slug = (model or "default").replace("/", "_").replace(":", "-")
-    return _RESULTS_DIR / f"{date.today().isoformat()}-{provider}-{model_slug}-n{limit}.md"
+    return _RESULTS_DIR / f"{date.today().isoformat()}-{provider}-{model_slug}-n{limit}.md"  # noqa: DTZ011 - filename slug wants the operator's local date, not UTC
 
 
 def _print_progress(i: int, total: int, result: ItemResult, cutoff: float, verbose: bool, run_start: float) -> None:
@@ -91,7 +96,7 @@ def backtest(
 
     try:
         llm_provider = resolve_provider(PROVIDERS, provider, model, fallback=False)
-    except Exception as e:  # noqa: BLE001 - top-level CLI boundary: report cleanly and exit, don't show a raw traceback
+    except Exception as e:
         typer.echo(f"Error initializing provider '{provider}': {e}", err=True)
         raise typer.Exit(1) from e
 

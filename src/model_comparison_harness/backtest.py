@@ -71,7 +71,7 @@ def sample_items(db_path: str, limit: int, seed: int) -> list[sqlite3.Row]:
             if chosen:
                 rows.extend(
                     conn.execute(
-                        f"SELECT id, url, title, description, status, score FROM items "  # noqa: S608 - placeholders are ?, not interpolated values
+                        f"SELECT id, url, title, description, status, score FROM items "
                         f"WHERE id IN ({placeholders})",
                         chosen,
                     ).fetchall()
