@@ -21,7 +21,7 @@ from discovery.config import (
 )
 from local_first_common.cli import resolve_provider
 from local_first_common.providers import PROVIDERS
-from local_first_common.tracking import register_tool, timed_run
+from local_first_common.tracking import register_tool
 
 from model_comparison_harness.backtest import ItemResult, run_backtest, sample_items
 from model_comparison_harness.report import render_markdown, summarize, write_items_csv
@@ -113,9 +113,7 @@ def backtest(
     def _on_result(i: int, total: int, result: ItemResult) -> None:
         _print_progress(i, total, result, cutoff, verbose, run_start)
 
-    with timed_run(_TOOL_NAME, getattr(llm_provider, "model", None)) as run:
-        results = run_backtest(items, llm_provider, INTEREST_PROFILE, INTEREST_EXCLUSIONS, on_result=_on_result)
-        run.item_count = len(results)
+    results = run_backtest(items, llm_provider, INTEREST_PROFILE, INTEREST_EXCLUSIONS, on_result=_on_result)
 
     model_label = f"{provider}/{getattr(llm_provider, 'model', model) or 'default'}"
     summary = summarize(results, model_label, cutoff)

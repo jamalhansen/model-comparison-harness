@@ -97,6 +97,18 @@ class TestRunBacktest:
         results = run_backtest(items, provider, "testing")
         assert len(results) == len(items)
 
+    def test_source_location_and_item_count_set_before_each_call(self, db_path):
+        """Regression 2026-09-20: an LLM call is logged once, inside the
+        gateway -- source_location/item_count now travel to the gateway per
+        item via provider.source_location/.item_count instead of the
+        removed outer timed_run() wrapping the whole batch (which reported
+        one row for N calls, not N)."""
+        items = sample_items(db_path, limit=2, seed=1)
+        provider = _FakeProvider(['{"score": 0.7, "tags": [], "summary": "x", "language": "en"}'] * len(items))
+        run_backtest(items, provider, "testing")
+        assert provider.source_location == items[-1]["title"]
+        assert provider.item_count == 1
+
     def test_provider_exception_surfaces_as_no_result(self, db_path):
         # BaseScorer.score() catches provider exceptions internally and returns
         # None rather than raising -- this can't distinguish "provider down"

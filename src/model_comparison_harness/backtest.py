@@ -105,6 +105,8 @@ def run_backtest(
     total = len(items)
     for i, item in enumerate(items, start=1):
         user_message = build_user_message(item["title"], item["description"], interest_profile, exclusions)
+        provider.source_location = item["title"]
+        provider.item_count = 1
         start = time.monotonic()
         scored = scorer.score(provider, user_message)
         latency = time.monotonic() - start
