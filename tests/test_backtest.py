@@ -49,6 +49,16 @@ class TestSampleItems:
         # only 2 kept, 2 dismissed-with-description exist
         assert len(items) == 4
 
+    def test_empty_stratum_fails_loudly(self, db_path):
+        # A status rename in content-discovery-agent must not silently collapse
+        # the stratified sample into a single-status backtest.
+        conn = sqlite3.connect(db_path)
+        conn.execute("UPDATE items SET status = 'retained' WHERE status = 'kept'")
+        conn.commit()
+        conn.close()
+        with pytest.raises(ValueError, match="status 'kept'"):
+            sample_items(db_path, limit=4, seed=1)
+
 
 class _FakeScoredItem:
     def __init__(self, score):

@@ -66,6 +66,16 @@ def sample_items(db_path: str, limit: int, seed: int) -> list[sqlite3.Row]:
                     "SELECT id FROM items WHERE status = ? AND description != ''", (status,)
                 ).fetchall()
             ]
+            # An empty stratum must fail loudly: this raw query couples to
+            # content-discovery-agent's status vocabulary, and a rename there
+            # would otherwise silently collapse the stratified sample into a
+            # single-status backtest with meaningless agreement numbers.
+            if not ids:
+                raise ValueError(
+                    f"No scorable items with status '{status}' in {db_path} -- either the "
+                    f"store has no {status} items yet, or content-discovery-agent's status "
+                    f"vocabulary changed out from under this query."
+                )
             chosen = rng.sample(ids, k=min(per_status, len(ids)))
             placeholders = ",".join("?" * len(chosen))
             if chosen:

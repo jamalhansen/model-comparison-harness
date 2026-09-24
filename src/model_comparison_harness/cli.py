@@ -100,7 +100,11 @@ def backtest(
         typer.echo(f"Error initializing provider '{provider}': {e}", err=True)
         raise typer.Exit(1) from e
 
-    items = sample_items(db_path, limit, seed)
+    try:
+        items = sample_items(db_path, limit, seed)
+    except ValueError as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1) from e
     if not items:
         typer.echo(f"No scored items with a description found in {db_path}", err=True)
         raise typer.Exit(1)
