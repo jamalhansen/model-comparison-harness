@@ -25,6 +25,18 @@ from local_first_common.tracking import register_tool
 
 from model_comparison_harness.backtest import ItemResult, run_backtest, sample_items
 from model_comparison_harness.report import render_markdown, summarize, write_items_csv
+from model_comparison_harness.tags import (
+    DEFAULT_EXCLUDE_DIRS,
+    DEFAULT_IGNORE_TAGS,
+    TagResult,
+    load_tagged_notes,
+    render_tags_markdown,
+    run_tag_backtest,
+    sample_notes,
+    summarize_tags,
+    vault_vocabulary,
+    write_tags_csv,
+)
 
 _TOOL_NAME = "model-comparison-harness"
 _TOOL = register_tool(_TOOL_NAME)
@@ -39,12 +51,13 @@ _RESULTS_DIR = Path(
 app = typer.Typer(add_completion=False)
 
 
-def _default_output_path(provider: str, model: str | None, limit: int) -> Path:
+def _default_output_path(provider: str, model: str | None, limit: int, ground: str = "") -> Path:
     """Every run is recorded by default -- results/<date>-<provider>-<model>-n<limit>.md
     in the repo, not just printed to stdout, so past runs aren't lost the moment the
     terminal scrolls."""
     model_slug = (model or "default").replace("/", "_").replace(":", "-")
-    return _RESULTS_DIR / f"{date.today().isoformat()}-{provider}-{model_slug}-n{limit}.md"  # noqa: DTZ011 - filename slug wants the operator's local date, not UTC
+    prefix = f"{ground}-" if ground else ""
+    return _RESULTS_DIR / f"{date.today().isoformat()}-{prefix}{provider}-{model_slug}-n{limit}.md"  # noqa: DTZ011 - filename slug wants the operator's local date, not UTC
 
 
 def _print_progress(i: int, total: int, result: ItemResult, cutoff: float, verbose: bool, run_start: float) -> None:
@@ -86,7 +99,7 @@ def backtest(
     if provider in ("anthropic",):
         typer.echo(
             "Error: comparing Anthropic against itself proves nothing -- pick a candidate "
-            "provider (ollama, groq, deepseek, gemini).",
+            "provider (ollama, claude-code, groq, deepseek, gemini).",
             err=True,
         )
         raise typer.Exit(1)
@@ -133,6 +146,59 @@ def backtest(
     items_path = output_path.with_suffix(".csv")
     write_items_csv(results, items_path, cutoff)
     typer.echo(f"Written: {items_path}")
+
+
+@app.command()
+def tags(
+    provider: Annotated[str, typer.Option("--provider", "-p", help="Candidate provider")] = "ollama",
+    model: Annotated[str | None, typer.Option("--model", "-m", help="Model name")] = None,
+    vault: Annotated[str, typer.Option("--vault", help="Vault whose existing tags are the ground truth")] = "~/vaults/BrainSync",
+    limit: Annotated[int, typer.Option("--limit", "-n", help="Tagged notes to hold out")] = 50,
+    seed: Annotated[int, typer.Option("--seed", help="Sampling seed, for a reproducible sample")] = 42,
+    min_tags: Annotated[int, typer.Option("--min-tags", help="Only sample notes with at least this many tags")] = 2,
+    output: Annotated[str | None, typer.Option("--output", "-o", help="Write the markdown report to a file")] = None,
+    verbose: Annotated[bool, typer.Option("--verbose", help="Print per-note results as they run")] = False,
+) -> None:
+    """Hold out already-tagged notes, re-tag them with obsidian-vault-auto-tagger's
+    prompt on `provider`/`model`, and score the suggestions against your own tags."""
+    vault_path = Path(vault).expanduser()
+    try:
+        llm_provider = resolve_provider(PROVIDERS, provider, model, fallback=False, tool_name=_TOOL_NAME)
+    except Exception as e:
+        typer.echo(f"Error initializing provider '{provider}': {e}", err=True)
+        raise typer.Exit(1) from e
+
+    notes = load_tagged_notes(vault_path, min_tags, DEFAULT_EXCLUDE_DIRS, DEFAULT_IGNORE_TAGS)
+    if not notes:
+        typer.echo(f"No notes with {min_tags}+ tags found in {vault_path}", err=True)
+        raise typer.Exit(1)
+    sample = sample_notes(notes, limit, seed)
+    vocabulary = vault_vocabulary(vault_path)
+    typer.echo(
+        f"Holding out {len(sample)} of {len(notes)} tagged notes in {vault_path} "
+        f"(vocabulary: {len(vocabulary)} tags). Tagging with {provider}/{getattr(llm_provider, 'model', model)}..."
+    )
+    sys.stdout.flush()
+
+    run_start = time.monotonic()
+
+    def _on_result(i: int, total: int, r: TagResult) -> None:
+        elapsed = time.monotonic() - run_start
+        line = f"[{i}/{total}] {elapsed:.0f}s elapsed, ~{(elapsed / i) * (total - i):.0f}s remaining"
+        if verbose:
+            got = "ERROR" if r.error else f"{r.hits}/{len(r.truth)} hit"
+            line += f"  [{got}] yours={r.truth} suggested={r.predicted} :: {r.path[:50]}"
+        print(line, flush=True)
+
+    results = run_tag_backtest(sample, llm_provider, vocabulary, on_result=_on_result)
+    report = render_tags_markdown(summarize_tags(results, f"{provider}/{getattr(llm_provider, 'model', model) or 'default'}"))
+    typer.echo("\n" + report)
+
+    output_path = Path(output) if output else _default_output_path(provider, model, limit, ground="tags")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(report, encoding="utf-8")
+    write_tags_csv(results, output_path.with_suffix(".csv"))
+    typer.echo(f"Written: {output_path} (+ .csv)")
 
 
 if __name__ == "__main__":

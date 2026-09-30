@@ -646,6 +646,7 @@ source = { editable = "." }
 dependencies = [
     { name = "content-discovery-agent" },
     { name = "local-first-common" },
+    { name = "obsidian-vault-auto-tagger" },
     { name = "typer" },
 ]
 
@@ -659,6 +660,7 @@ dev = [
 requires-dist = [
     { name = "content-discovery-agent", directory = "../content-discovery-agent" },
     { name = "local-first-common", git = "https://github.com/jamalhansen/local-first-common.git?branch=main" },
+    { name = "obsidian-vault-auto-tagger", directory = "../obsidian-vault-auto-tagger" },
     { name = "typer", specifier = ">=0.15.0" },
 ]
 
@@ -666,6 +668,35 @@ requires-dist = [
 dev = [
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-cov", specifier = ">=7.0.0" },
+]
+
+[[package]]
+name = "obsidian-vault-auto-tagger"
+version = "0.1.0"
+source = { directory = "../obsidian-vault-auto-tagger" }
+dependencies = [
+    { name = "local-first-common" },
+    { name = "pydantic" },
+    { name = "python-frontmatter" },
+    { name = "rich" },
+    { name = "toml" },
+    { name = "typer" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "local-first-common", git = "https://github.com/jamalhansen/local-first-common.git?branch=main" },
+    { name = "pydantic", specifier = ">=2.12.5" },
+    { name = "python-frontmatter", specifier = ">=1.1.0" },
+    { name = "rich", specifier = ">=14.3.3" },
+    { name = "toml", specifier = ">=0.10.2" },
+    { name = "typer", specifier = ">=0.15.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "pytest-cov", specifier = ">=7.1.0" },
 ]
 
 [[package]]
