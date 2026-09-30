@@ -26,6 +26,9 @@ Holds out `--limit` notes that already carry `--min-tags` or more tags (default 
 
 ### `backtest`
 
+**Pass `--since <date of the last interest-profile revision>`.** Stored scores and keep/dismiss decisions are ground truth only for the profile they were made under. After the 2026-09-26 profile rewrite, a run over older items reported 92% false dismisses for the very model the live scorer uses -- it was grading the new profile against old decisions. Runs without `--since` are only comparable to each other, and only if the profile didn't change between them.
+
+
 Reads content-discovery-agent's `store.db` (path auto-detected, or pass `--store`), samples `--limit` items with `--seed` for reproducibility, and scores them against the same keep/dismiss `--threshold` the live config uses. Pass `--output report.md` to write the comparison as markdown, `--verbose` to see per-item agreement as it runs.
 
 Report output from real runs tends to land in `results/` for reference across comparisons -- generated data, not source, so it's untracked rather than committed.

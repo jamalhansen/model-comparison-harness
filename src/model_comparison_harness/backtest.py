@@ -46,8 +46,13 @@ class ItemResult:
         return decision == self.original_decision
 
 
-def sample_items(db_path: str, limit: int, seed: int) -> list[sqlite3.Row]:
+def sample_items(db_path: str, limit: int, seed: int, since: str | None = None) -> list[sqlite3.Row]:
     """Stratified sample: half kept, half dismissed (as close to that as the data allows).
+
+    `since` (ISO date) keeps only items fetched on/after it. Stored scores and keep/dismiss
+    decisions are only ground truth for the interest profile they were made under: after
+    the 2026-09-26 profile rewrite, a run over older items graded the new profile against
+    old decisions and reported a meaningless 92% false-dismiss rate.
 
     A pure random sample would be ~94% dismissed (the real traffic mix) and barely
     exercise whether a candidate model can actually recognize a good item -- the
@@ -59,12 +64,14 @@ def sample_items(db_path: str, limit: int, seed: int) -> list[sqlite3.Row]:
         per_status = max(1, limit // 2)
         rng = random.Random(seed)
         rows: list[sqlite3.Row] = []
+        where, params = "status = ? AND description != ''", []
+        if since:
+            where += " AND fetched_at >= ?"
+            params = [since]
         for status in ("kept", "dismissed"):
             ids = [
                 r[0]
-                for r in conn.execute(
-                    "SELECT id FROM items WHERE status = ? AND description != ''", (status,)
-                ).fetchall()
+                for r in conn.execute(f"SELECT id FROM items WHERE {where}", (status, *params)).fetchall()
             ]
             # An empty stratum must fail loudly: this raw query couples to
             # content-discovery-agent's status vocabulary, and a rename there
@@ -72,7 +79,7 @@ def sample_items(db_path: str, limit: int, seed: int) -> list[sqlite3.Row]:
             # single-status backtest with meaningless agreement numbers.
             if not ids:
                 raise ValueError(
-                    f"No scorable items with status '{status}' in {db_path} -- either the "
+                    f"No scorable items with status '{status}'{f' since {since}' if since else ''} in {db_path} -- either the "
                     f"store has no {status} items yet, or content-discovery-agent's status "
                     f"vocabulary changed out from under this query."
                 )

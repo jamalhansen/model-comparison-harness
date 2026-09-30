@@ -12,17 +12,17 @@ def db_path(tmp_path):
     conn.execute(
         """CREATE TABLE items (
             id INTEGER PRIMARY KEY, url TEXT, title TEXT, description TEXT,
-            status TEXT, score REAL
+            status TEXT, score REAL, fetched_at TEXT
         )"""
     )
     rows = [
-        (1, "https://a.example", "A kept item", "desc a", "kept", 0.9),
-        (2, "https://b.example", "B kept item", "desc b", "kept", 0.85),
-        (3, "https://c.example", "C dismissed item", "desc c", "dismissed", 0.2),
-        (4, "https://d.example", "D dismissed item", "desc d", "dismissed", 0.1),
-        (5, "https://e.example", "E no description", "", "dismissed", 0.0),
+        (1, "https://a.example", "A kept item", "desc a", "kept", 0.9, "2026-09-27"),
+        (2, "https://b.example", "B kept item", "desc b", "kept", 0.85, "2026-08-01"),
+        (3, "https://c.example", "C dismissed item", "desc c", "dismissed", 0.2, "2026-09-28"),
+        (4, "https://d.example", "D dismissed item", "desc d", "dismissed", 0.1, "2026-08-02"),
+        (5, "https://e.example", "E no description", "", "dismissed", 0.0, "2026-09-28"),
     ]
-    conn.executemany("INSERT INTO items VALUES (?, ?, ?, ?, ?, ?)", rows)
+    conn.executemany("INSERT INTO items VALUES (?, ?, ?, ?, ?, ?, ?)", rows)
     conn.commit()
     conn.close()
     return str(path)
@@ -48,6 +48,14 @@ class TestSampleItems:
         items = sample_items(db_path, limit=100, seed=1)
         # only 2 kept, 2 dismissed-with-description exist
         assert len(items) == 4
+
+    def test_since_keeps_only_items_scored_under_the_current_profile(self, db_path):
+        items = sample_items(db_path, limit=10, seed=1, since="2026-09-26")
+        assert sorted(row["id"] for row in items) == [1, 3]
+
+    def test_since_with_no_recent_stratum_fails_loudly(self, db_path):
+        with pytest.raises(ValueError, match="since 2027-01-01"):
+            sample_items(db_path, limit=4, seed=1, since="2027-01-01")
 
     def test_empty_stratum_fails_loudly(self, db_path):
         # A status rename in content-discovery-agent must not silently collapse

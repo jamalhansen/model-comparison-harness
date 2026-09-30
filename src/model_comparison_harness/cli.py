@@ -87,6 +87,10 @@ def backtest(
     model: Annotated[str | None, typer.Option("--model", "-m", help="Model name (e.g. qwen2.5:7b)")] = None,
     limit: Annotated[int, typer.Option("--limit", "-n", help="Items to sample (split evenly kept/dismissed)")] = 200,
     seed: Annotated[int, typer.Option("--seed", help="Sampling seed, for a reproducible sample")] = 42,
+    since: Annotated[
+        str | None,
+        typer.Option("--since", help="Only items fetched on/after this date (YYYY-MM-DD) -- use the interest profile's last revision date"),
+    ] = None,
     store: Annotated[str | None, typer.Option("--store", help="Path to content-discovery-agent's store.db")] = None,
     threshold: Annotated[
         float | None, typer.Option("--threshold", help="Keep/dismiss cutoff (defaults to the live config's)")
@@ -114,7 +118,7 @@ def backtest(
         raise typer.Exit(1) from e
 
     try:
-        items = sample_items(db_path, limit, seed)
+        items = sample_items(db_path, limit, seed, since)
     except ValueError as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(1) from e
