@@ -93,7 +93,18 @@ def write_items_csv(results: list[ItemResult], path: Path, threshold: float) -> 
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(
-            ["item_id", "status", "claude_score", "candidate_score", "agrees", "abs_diff", "latency_s", "error", "title", "url"]
+            [
+                "item_id",
+                "status",
+                "claude_score",
+                "candidate_score",
+                "agrees",
+                "abs_diff",
+                "latency_s",
+                "error",
+                "title",
+                "url",
+            ]
         )
         for r in results:
             agrees = r.agrees(threshold)

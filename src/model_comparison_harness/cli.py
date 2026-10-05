@@ -89,7 +89,10 @@ def backtest(
     seed: Annotated[int, typer.Option("--seed", help="Sampling seed, for a reproducible sample")] = 42,
     since: Annotated[
         str | None,
-        typer.Option("--since", help="Only items fetched on/after this date (YYYY-MM-DD) -- use the interest profile's last revision date"),
+        typer.Option(
+            "--since",
+            help="Only items fetched on/after this date (YYYY-MM-DD) -- use the interest profile's last revision date",
+        ),
     ] = None,
     store: Annotated[str | None, typer.Option("--store", help="Path to content-discovery-agent's store.db")] = None,
     threshold: Annotated[
@@ -126,7 +129,9 @@ def backtest(
         typer.echo(f"No scored items with a description found in {db_path}", err=True)
         raise typer.Exit(1)
 
-    typer.echo(f"Sampled {len(items)} items from {db_path}. Scoring with {provider}/{getattr(llm_provider, 'model', model)}...")
+    typer.echo(
+        f"Sampled {len(items)} items from {db_path}. Scoring with {provider}/{getattr(llm_provider, 'model', model)}..."
+    )
     sys.stdout.flush()
 
     run_start = time.monotonic()
@@ -156,7 +161,9 @@ def backtest(
 def tags(
     provider: Annotated[str, typer.Option("--provider", "-p", help="Candidate provider")] = "ollama",
     model: Annotated[str | None, typer.Option("--model", "-m", help="Model name")] = None,
-    vault: Annotated[str, typer.Option("--vault", help="Vault whose existing tags are the ground truth")] = "~/vaults/BrainSync",
+    vault: Annotated[
+        str, typer.Option("--vault", help="Vault whose existing tags are the ground truth")
+    ] = "~/vaults/BrainSync",
     limit: Annotated[int, typer.Option("--limit", "-n", help="Tagged notes to hold out")] = 50,
     seed: Annotated[int, typer.Option("--seed", help="Sampling seed, for a reproducible sample")] = 42,
     min_tags: Annotated[int, typer.Option("--min-tags", help="Only sample notes with at least this many tags")] = 2,
@@ -195,7 +202,9 @@ def tags(
         print(line, flush=True)
 
     results = run_tag_backtest(sample, llm_provider, vocabulary, on_result=_on_result)
-    report = render_tags_markdown(summarize_tags(results, f"{provider}/{getattr(llm_provider, 'model', model) or 'default'}"))
+    report = render_tags_markdown(
+        summarize_tags(results, f"{provider}/{getattr(llm_provider, 'model', model) or 'default'}")
+    )
     typer.echo("\n" + report)
 
     output_path = Path(output) if output else _default_output_path(provider, model, limit, ground="tags")

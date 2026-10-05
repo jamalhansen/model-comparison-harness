@@ -171,20 +171,25 @@ def render_tags_markdown(s: TagSummary) -> str:
     def num(v: float | None) -> str:
         return f"{v:.2f}" if v is not None else "n/a"
 
-    return "\n".join([
-        f"# Tag backtest: {s.model_name}",
-        "",
-        f"- Notes sampled: {s.n_notes} ({s.n_notes - s.n_errors} scored, {s.n_errors} errors/unparseable)",
-        f"- **F1 vs your own tags: {pct(s.f1)}** (precision {pct(s.precision)}, recall {pct(s.recall)})",
-        f"- Notes where at least one suggested tag matched yours: {pct(s.notes_with_any_hit)}",
-        f"- Suggested tags already in the vault vocabulary: {pct(s.vocab_adherence)} (the tagger's rule #1)",
-        f"- Avg tags suggested per note: {num(s.avg_suggested)}",
-        f"- Avg latency per note: {num(s.avg_latency_s)}s",
-        "",
-        "Precision is the noise cost (tags you'd have to delete); recall is what the model misses.",
-        "Vocabulary adherence matters as much as either: a model that invents near-duplicate",
-        "tags fragments the vault even when each individual tag looks reasonable.",
-    ]) + "\n"
+    return (
+        "\n".join(
+            [
+                f"# Tag backtest: {s.model_name}",
+                "",
+                f"- Notes sampled: {s.n_notes} ({s.n_notes - s.n_errors} scored, {s.n_errors} errors/unparseable)",
+                f"- **F1 vs your own tags: {pct(s.f1)}** (precision {pct(s.precision)}, recall {pct(s.recall)})",
+                f"- Notes where at least one suggested tag matched yours: {pct(s.notes_with_any_hit)}",
+                f"- Suggested tags already in the vault vocabulary: {pct(s.vocab_adherence)} (the tagger's rule #1)",
+                f"- Avg tags suggested per note: {num(s.avg_suggested)}",
+                f"- Avg latency per note: {num(s.avg_latency_s)}s",
+                "",
+                "Precision is the noise cost (tags you'd have to delete); recall is what the model misses.",
+                "Vocabulary adherence matters as much as either: a model that invents near-duplicate",
+                "tags fragments the vault even when each individual tag looks reasonable.",
+            ]
+        )
+        + "\n"
+    )
 
 
 def write_tags_csv(results: list[TagResult], path: Path) -> None:
@@ -192,12 +197,14 @@ def write_tags_csv(results: list[TagResult], path: Path) -> None:
         writer = csv.writer(f)
         writer.writerow(["path", "your_tags", "suggested_tags", "hits", "in_vocab", "latency_s", "error"])
         for r in results:
-            writer.writerow([
-                r.path,
-                " ".join(r.truth),
-                "" if r.predicted is None else " ".join(r.predicted),
-                r.hits,
-                r.in_vocab,
-                f"{r.latency_s:.2f}",
-                r.error or "",
-            ])
+            writer.writerow(
+                [
+                    r.path,
+                    " ".join(r.truth),
+                    "" if r.predicted is None else " ".join(r.predicted),
+                    r.hits,
+                    r.in_vocab,
+                    f"{r.latency_s:.2f}",
+                    r.error or "",
+                ]
+            )

@@ -69,10 +69,7 @@ def sample_items(db_path: str, limit: int, seed: int, since: str | None = None) 
             where += " AND fetched_at >= ?"
             params = [since]
         for status in ("kept", "dismissed"):
-            ids = [
-                r[0]
-                for r in conn.execute(f"SELECT id FROM items WHERE {where}", (status, *params)).fetchall()
-            ]
+            ids = [r[0] for r in conn.execute(f"SELECT id FROM items WHERE {where}", (status, *params)).fetchall()]
             # An empty stratum must fail loudly: this raw query couples to
             # content-discovery-agent's status vocabulary, and a rename there
             # would otherwise silently collapse the stratified sample into a
@@ -88,8 +85,7 @@ def sample_items(db_path: str, limit: int, seed: int, since: str | None = None) 
             if chosen:
                 rows.extend(
                     conn.execute(
-                        f"SELECT id, url, title, description, status, score FROM items "
-                        f"WHERE id IN ({placeholders})",
+                        f"SELECT id, url, title, description, status, score FROM items WHERE id IN ({placeholders})",
                         chosen,
                     ).fetchall()
                 )

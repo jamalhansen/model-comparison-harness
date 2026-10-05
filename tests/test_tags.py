@@ -17,7 +17,7 @@ from model_comparison_harness.tags import (
 def _note(vault: Path, rel: str, tags: list[str], body: str = "Some body text.") -> None:
     path = vault / rel
     path.parent.mkdir(parents=True, exist_ok=True)
-    tag_yaml = "\n".join(f"  - \"{t}\"" for t in tags)
+    tag_yaml = "\n".join(f'  - "{t}"' for t in tags)
     path.write_text(f"---\ntags:\n{tag_yaml}\n---\n{body}\n", encoding="utf-8")
 
 
@@ -43,7 +43,11 @@ class FakeProvider:
         if path in self.fail_on:
             raise RuntimeError("unparseable")
         return response_model.model_validate(
-            {"suggestions": [{"file_path": path, "existing_tags": [], "suggested_tags": self.by_path[path], "reasoning": "r"}]}
+            {
+                "suggestions": [
+                    {"file_path": path, "existing_tags": [], "suggested_tags": self.by_path[path], "reasoning": "r"}
+                ]
+            }
         )
 
 

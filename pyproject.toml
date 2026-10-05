@@ -33,3 +33,6 @@ obsidian-vault-auto-tagger = { path = "../obsidian-vault-auto-tagger" }
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 120
