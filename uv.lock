@@ -219,6 +219,7 @@ version = "0.1.0"
 source = { directory = "../content-discovery-agent" }
 dependencies = [
     { name = "feedparser" },
+    { name = "httpx" },
     { name = "local-first-common", extra = ["anthropic"] },
     { name = "requests" },
     { name = "typer" },
@@ -227,6 +228,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "feedparser", specifier = ">=6.0.12" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "local-first-common", extras = ["anthropic"], git = "https://github.com/jamalhansen/local-first-common.git?branch=main" },
     { name = "playwright", marker = "extra == 'playwright'", specifier = ">=1.40" },
     { name = "requests", specifier = ">=2.32.5" },
@@ -599,7 +601,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/0e/72/a3add0e4eec4eb9e2
 [[package]]
 name = "local-first-common"
 version = "0.1.0"
-source = { git = "https://github.com/jamalhansen/local-first-common.git?branch=main#30eb31ef3a2a1ae4ee64ee9f2fbbf4450a6cb436" }
+source = { git = "https://github.com/jamalhansen/local-first-common.git?branch=main#12c00bab23094e29d76dd640f4219b614fd62f25" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "duckdb" },
