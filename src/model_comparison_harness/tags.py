@@ -140,7 +140,7 @@ def summarize_tags(results: list[TagResult], model_name: str) -> TagSummary:
     if not scored:
         return TagSummary(model_name, len(results), n_errors, None, None, None, None, None, None, None)
     hits = sum(r.hits for r in scored)
-    n_pred = sum(len(r.predicted) for r in scored)
+    n_pred = sum(len(r.predicted or []) for r in scored)
     n_truth = sum(len(r.truth) for r in scored)
     precision = hits / n_pred if n_pred else None
     recall = hits / n_truth if n_truth else None

@@ -1,6 +1,9 @@
+from collections.abc import Set as AbstractSet
 from pathlib import Path
+from typing import Any, ClassVar
 
 import pytest
+from local_first_common.providers.base import BaseProvider
 
 from model_comparison_harness.tags import (
     TagResult,
@@ -31,14 +34,31 @@ def vault(tmp_path):
     return tmp_path
 
 
-class FakeProvider:
+class _StubProvider(BaseProvider):
+    """A BaseProvider whose subclasses override complete() directly."""
+
+    provider_name = "stub"
+    default_model = "stub"
+    known_models: ClassVar[list[str]] = ["stub"]
+    models_url = ""
+
+    def _complete(self, system, user, response_model=None, images=None):
+        raise NotImplementedError
+
+    async def _acomplete(self, system, user, response_model=None, images=None):
+        raise NotImplementedError
+
+
+class FakeProvider(_StubProvider):
     """Returns canned VaultTagReport-shaped results keyed by note path."""
 
-    def __init__(self, by_path: dict[str, list[str]], fail_on: set[str] = frozenset()):
+    def __init__(self, by_path: dict[str, list[str]], fail_on: AbstractSet[str] = frozenset()):
+        super().__init__()
         self.by_path = by_path
         self.fail_on = fail_on
 
-    def complete(self, system, user, response_model=None):
+    def complete(self, system, user, response_model=None, images=None, max_retries=1, rate_limit_retries=3) -> Any:
+        assert response_model is not None
         path = next(p for p in list(self.by_path) + list(self.fail_on) if f"FILE: {p}\n" in user)
         if path in self.fail_on:
             raise RuntimeError("unparseable")
@@ -84,7 +104,7 @@ class TestRunTagBacktest:
         assert ok.hits == 1
         assert ok.in_vocab == 1
         assert by_path["blog/second.md"].predicted is None
-        assert "unparseable" in by_path["blog/second.md"].error
+        assert by_path["blog/second.md"].error is not None and "unparseable" in by_path["blog/second.md"].error
         assert seen == [1, 2]
 
     def test_candidate_never_sees_the_held_out_tags(self, vault):
@@ -92,7 +112,9 @@ class TestRunTagBacktest:
         captured = {}
 
         class Spy(FakeProvider):
-            def complete(self, system, user, response_model=None):
+            def complete(
+                self, system, user, response_model=None, images=None, max_retries=1, rate_limit_retries=3
+            ) -> Any:
                 captured["user"] = user
                 return super().complete(system, user, response_model)
 

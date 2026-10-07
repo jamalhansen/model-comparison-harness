@@ -49,7 +49,7 @@ class TestSummarize:
     def test_mean_abs_score_diff(self):
         results = [_result("kept", 0.9, 0.7), _result("dismissed", 0.1, 0.3)]
         s = summarize(results, "test-model", THRESHOLD)
-        assert abs(s.mean_abs_score_diff - 0.2) < 1e-9
+        assert s.mean_abs_score_diff is not None and abs(s.mean_abs_score_diff - 0.2) < 1e-9
 
 
 class TestRenderMarkdown:

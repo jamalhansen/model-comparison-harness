@@ -28,10 +28,10 @@ def summarize(results: list[ItemResult], model_name: str, threshold: float) -> S
     if not scored:
         return Summary(model_name, n_items, n_errors, 0, None, None, None, None, None)
 
-    agreements = [r.agrees(threshold) for r in scored]
+    agreements = [bool(r.agrees(threshold)) for r in scored]  # never None: scored items all have a score
     agreement_rate = sum(agreements) / len(agreements)
 
-    diffs = [abs(r.candidate_score - r.original_score) for r in scored]
+    diffs = [abs(r.candidate_score - r.original_score) for r in scored if r.candidate_score is not None]
     mean_abs_diff = sum(diffs) / len(diffs)
 
     avg_latency = sum(r.latency_s for r in scored) / len(scored)

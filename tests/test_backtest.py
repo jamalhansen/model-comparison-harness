@@ -1,6 +1,8 @@
 import sqlite3
+from typing import Any, ClassVar
 
 import pytest
+from local_first_common.providers.base import BaseProvider
 
 from model_comparison_harness.backtest import ItemResult, run_backtest, sample_items
 
@@ -76,14 +78,30 @@ class _FakeScoredItem:
         self.language = "en"
 
 
-class _FakeProvider:
-    """Not a real BaseProvider -- ContentDiscoveryScorer.score() only calls .complete()."""
+class _StubProvider(BaseProvider):
+    """A BaseProvider whose subclasses override complete() directly."""
+
+    provider_name = "stub"
+    default_model = "stub"
+    known_models: ClassVar[list[str]] = ["stub"]
+    models_url = ""
+
+    def _complete(self, system, user, response_model=None, images=None):
+        raise NotImplementedError
+
+    async def _acomplete(self, system, user, response_model=None, images=None):
+        raise NotImplementedError
+
+
+class _FakeProvider(_StubProvider):
+    """ContentDiscoveryScorer.score() only calls .complete(); this answers from a list."""
 
     def __init__(self, responses):
+        super().__init__()
         self._responses = list(responses)
         self.calls = 0
 
-    def complete(self, system_prompt, user_message):
+    def complete(self, system, user, response_model=None, images=None, max_retries=1, rate_limit_retries=3) -> Any:
         self.calls += 1
         return self._responses.pop(0)
 
@@ -133,21 +151,23 @@ class TestRunBacktest:
         # from "bad response" from the outside, and the error message says so.
         items = sample_items(db_path, limit=2, seed=1)
 
-        class _Boom:
-            def complete(self, *a, **k):
+        class _Boom(_StubProvider):
+            def complete(
+                self, system, user, response_model=None, images=None, max_retries=1, rate_limit_retries=3
+            ) -> Any:
                 raise RuntimeError("provider down")
 
         results = run_backtest(items, _Boom(), "testing")
         assert len(results) == len(items)
         assert all(r.candidate_score is None for r in results)
-        assert all("no result" in r.error for r in results)
+        assert all(r.error is not None and "no result" in r.error for r in results)
 
     def test_unparseable_response_recorded_as_error(self, db_path):
         items = sample_items(db_path, limit=2, seed=1)
         provider = _FakeProvider(["not json at all"] * len(items))
         results = run_backtest(items, provider, "testing")
         assert all(r.candidate_score is None for r in results)
-        assert all("no result" in r.error for r in results)
+        assert all(r.error is not None and "no result" in r.error for r in results)
 
 
 class TestItemResult:
